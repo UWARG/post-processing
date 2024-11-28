@@ -27,7 +27,7 @@ def convert_log_to_kml(
     positions = []
 
     try:
-        with open(log_file, "r") as f:
+        with open(log_file, "r", encoding="utf-8") as f:
             for line in f:
                 # find all the latitudes and longitudes within the line
                 latitudes = re.findall(r"latitude: (-?\d+\.\d+)", line)
@@ -48,16 +48,15 @@ def convert_log_to_kml(
                 longitudes = list(map(float, longitudes))
                 altitudes = list(map(float, altitudes))
 
-                for i in range(len(latitudes)):
+                for i, latitude in enumerate(latitudes):
                     success, location = PositionGlobalRelativeAltitude.create(
-                        latitudes[i], longitudes[i], altitudes[i]
+                        latitude, longitudes[i], altitudes[i]
                     )
-                    print(latitudes[i], longitudes[i], altitudes[i])
                     if not success:
                         return False, None
                     positions.append(location)
 
             return positions_to_kml(positions, document_name_prefix, save_directory)
-    except Exception as e:
+    except (FileNotFoundError, IsADirectoryError, PermissionError, OSError) as e:
         print(e.with_traceback())
         return False, None
