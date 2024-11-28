@@ -5,8 +5,8 @@ Convert log file to KML file.
 import pathlib
 import re
 
-from modules.common.modules.kml.kml_conversion import locations_to_kml
-from modules.common.modules.location_global import LocationGlobal
+from modules.common.modules.kml.kml_conversion import positions_to_kml
+from modules.common.modules.position_global_relative_altitude import PositionGlobalRelativeAltitude
 
 
 def convert_log_to_kml(
@@ -24,7 +24,7 @@ def convert_log_to_kml(
             failed to execute, otherwise (True, path) where path a pathlib.Path
             object pointing to the KML file.
     """
-    locations = []
+    positions = []
 
     try:
         with open(log_file, "r") as f:
@@ -32,25 +32,32 @@ def convert_log_to_kml(
                 # find all the latitudes and longitudes within the line
                 latitudes = re.findall(r"latitude: (-?\d+\.\d+)", line)
                 longitudes = re.findall(r"longitude: (-?\d+\.\d+)", line)
+                altitudes = re.findall(r"altitude: (-?\d+\.\d+)", line)
 
                 # we must find equal number of latitude and longitude numbers,
                 # otherwise that means the log file is improperly formatted or
                 # the script failed to detect all locations
-                if len(latitudes) != len(longitudes):
-                    print("Number of latitudes and longitudes found are different.")
-                    print(f"# of altitudes: {len(latitudes)}, # of longitudes: {len(longitudes)}")
+                if not len(latitudes) == len(longitudes) == len(altitudes):
+                    print("Number of latitudes, longitudes and latitudes found are different.")
+                    print("Number of latitudes:", len(latitudes))
+                    print("Number of longitudes:", len(longitudes))
+                    print("Number of altitudes:", len(altitudes))
                     return False, None
 
                 latitudes = list(map(float, latitudes))
                 longitudes = list(map(float, longitudes))
+                altitudes = list(map(float, altitudes))
 
                 for i in range(len(latitudes)):
-                    success, location = LocationGlobal.create(latitudes[i], longitudes[i])
+                    success, location = PositionGlobalRelativeAltitude.create(
+                        latitudes[i], longitudes[i], altitudes[i]
+                    )
+                    print(latitudes[i], longitudes[i], altitudes[i])
                     if not success:
                         return False, None
-                    locations.append(location)
+                    positions.append(location)
 
-            return locations_to_kml(locations, document_name_prefix, save_directory)
+            return positions_to_kml(positions, document_name_prefix, save_directory)
     except Exception as e:
         print(e.with_traceback())
         return False, None
