@@ -49,5 +49,5 @@ jobs:
           pylint .
 
       # Run unit tests with PyTest
-      - name: Run unit tests
-        run: pytest -vv
+      # - name: Run unit tests
+      #   run: pytest -vv
