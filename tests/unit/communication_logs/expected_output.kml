@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2">
+    <Document id="1">
+        <Placemark id="3">
+            <name>Home location</name>
+            <Point id="2">
+                <coordinates>-80.54010009765625,43.47297668457031,0</coordinates>
+            </Point>
+        </Placemark>
+        <Placemark id="5">
+            <name>Time: 1732785015.309915, YPR radians: -0.008399692364037037, 0.0010074555175378919, 0.0012647358234971762</name>
+            <Point id="4">
+                <coordinates>-80.54010200000002,43.47297730000001,-0.019981689917472067</coordinates>
+            </Point>
+        </Placemark>
+    </Document>
+</kml>
