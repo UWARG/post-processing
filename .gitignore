@@ -4,6 +4,7 @@
 
 # Logging
 logs/
+results/
 
 # Python
 __pycache__/
