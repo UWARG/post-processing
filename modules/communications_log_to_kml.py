@@ -14,7 +14,7 @@ DEFAULT_RESULTS_PATH = pathlib.Path("results")
 
 
 def convert_communication_log_to_kml(
-    log_file: str, document_name_prefix: str, save_directory: str
+    log_file_path: pathlib.Path, document_name_prefix: str, save_directory: pathlib.Path
 ) -> "tuple[bool, pathlib.Path | None]":
     """
     Given a communications log file with a specific format, return a corresponding KML file.
@@ -31,8 +31,10 @@ def convert_communication_log_to_kml(
     """
     locations = []
 
-    with open(log_file, "r", encoding="utf-8") as f:
-        for line in f:
+    with open(log_file_path, "r", encoding="utf-8") as log_file:
+        for line in log_file:
+            # Use the timestamp (hh:mm:ss) as the name of the marker in the KML file
+            time = line[:8]
             # find all the latitudes and longitudes within the line
             latitudes = re.findall(r"latitude: (-?\d+\.\d+)", line)
             longitudes = re.findall(r"longitude: (-?\d+\.\d+)", line)
@@ -45,20 +47,21 @@ def convert_communication_log_to_kml(
                 print(f"# of altitudes: {len(latitudes)}, # of longitudes: {len(longitudes)}")
                 return False, None
 
+            # Convert list of strings to list of floats
             latitudes = list(map(float, latitudes))
             longitudes = list(map(float, longitudes))
 
-            # Cannot use for each loop here
+            # Cannot use for each loop here, iterating through both lists at the same time
             # pylint: disable-next=consider-using-enumerate
             for i in range(len(latitudes)):
-                success, location = location_global.LocationGlobal.create(
-                    latitudes[i], longitudes[i]
+                result, location = location_global.NamedLocationGlobal.create(
+                    time + " " + i, latitudes[i], longitudes[i]
                 )
-                if not success:
+                if not result:
                     return False, None
                 locations.append(location)
 
-    return kml_conversion.locations_to_kml(locations, document_name_prefix, save_directory)
+    return kml_conversion.named_locations_to_kml(locations, document_name_prefix, save_directory)
 
 
 # similar main to other logs to kml scripts
