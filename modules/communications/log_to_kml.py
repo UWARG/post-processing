@@ -101,5 +101,5 @@ def convert_log_to_kml(
                 positions.append(converted_position_relative_altitude)
             return named_positions_to_kml(positions, document_name_prefix, save_directory)
     except (FileNotFoundError, IsADirectoryError, PermissionError, OSError) as e:
-        print(e.with_traceback())
+        print(e)
         return False, None
