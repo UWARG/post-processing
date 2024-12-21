@@ -58,34 +58,26 @@ def convert_communication_log_to_kml(
                     time + " " + i, latitudes[i], longitudes[i]
                 )
                 if not result:
+                    print(f"Failed to create location for time {time} and index {i}.")
                     return False, None
+
                 locations.append(location)
 
     return kml_conversion.named_locations_to_kml(locations, document_name_prefix, save_directory)
 
 
 # similar main to other logs to kml scripts
-# pylint: disable=duplicate-code
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--log-path", type=str, required=True, help="path to logs folder")
-    parser.add_argument(
-        "--document-prefix-name", type=str, default="", help="prefix name for saved KML file"
-    )
-    parser.add_argument(
-        "--output-dir",
-        "-o",
-        type=str,
-        default=str(DEFAULT_RESULTS_PATH),
-        help="directory to save KML file to",
-    )
+
     args = parser.parse_args()
 
-    pathlib.Path(args.output_dir).mkdir(exist_ok=True, parents=True)
-    result, path = convert_communication_log_to_kml(
-        args.log_path, args.document_prefix_name, args.output_dir
+    DEFAULT_RESULTS_PATH.mkdir(exist_ok=True, parents=True)
+    conversion_result, path = convert_communication_log_to_kml(
+        str(DEFAULT_RESULTS_PATH), "", args.output_dir
     )
-    if result:
+    if conversion_result:
         print("Done!")
     else:
         print("Failed to convert to KML")
