@@ -128,8 +128,8 @@ def read_log_files(
                         datetime.datetime.strptime(line.split(": ")[0], log_datetime_format)
                         log_entries.append(line)
                     except ValueError:
-                        # Skip lines that do not match the format
-                        print(f"WARNING: Skipping invalid log entry: {line.strip()}")
+                        # Group this line with last line with a timestamp
+                        log_entries[-1] += line
         # Catching all exceptions for library call
         # pylint: disable-next=broad-exception-caught
         except Exception as exception:
