@@ -77,7 +77,7 @@ def convert_geolocation_log_to_kml(
         return kml_conversion.locations_to_kml(locations, document_name_prefix, save_directory)
 
 
-def find_home_position(path: pathlib.Path) -> "tuple[bool, pathlib.Path | None]":
+def find_home_position(path: pathlib.Path) -> "tuple[bool, position_global.PositionGlobal | None]":
     """
     Parses a log file to find the home position coordinates.
 
