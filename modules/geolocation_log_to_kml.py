@@ -16,12 +16,14 @@ from .common.modules.mavlink import local_global_conversion
 DEFAULT_RESULTS_PATH = pathlib.Path("results")
 
 
+# Disable detection of variable naming clash under if __name__ == "__main__",
+# since the two scopes don't conflict with each other.
 # pylint: disable=redefined-outer-name
 def convert_geolocation_log_to_kml(
-    log_file: str,
+    log_file: pathlib.Path,
     home_position: position_global.PositionGlobal,
     document_name_prefix: str,
-    save_directory: str,
+    save_directory: pathlib.Path,
 ) -> "tuple[bool, pathlib.Path | None]":
     """
     Given a geolocation log file with a specific format, return a corresponding KML file.
@@ -43,7 +45,7 @@ def convert_geolocation_log_to_kml(
             # find all the points within the line (should be just 1)
             points = re.findall(
                 r"centre: \[.*\]", line
-            )  # fornmat: [ 'centre:', '[', '123.123', '123.123]' ]
+            )  # format: [ 'centre:', '[', '123.123', '123.123]' ]
 
             if len(points) > 0:
                 point = points[0].split()
@@ -53,6 +55,7 @@ def convert_geolocation_log_to_kml(
                 if not result:
                     print("Failed creating LocationLocal")
                     return False, None
+
                 result, global_position = (
                     local_global_conversion.position_global_from_location_local(
                         home_position, local_location
@@ -61,15 +64,43 @@ def convert_geolocation_log_to_kml(
                 if not result:
                     print("Failed converting from LocationLocal to PositionGlobal")
                     return False, None
+
                 result, global_location = location_global.LocationGlobal.create(
                     global_position.latitude, global_position.longitude
                 )
                 if not result:
                     print("Failed converting from PositionGlobal to LocationGlobal")
                     return False, None
+
                 locations.append(global_location)
 
         return kml_conversion.locations_to_kml(locations, document_name_prefix, save_directory)
+
+
+def find_home_position(path: pathlib.Path) -> "tuple[bool, pathlib.Path | None]":
+    """
+    Parses a log file to find the home position coordinates.
+
+    Args:
+        path (pathlib.Path): The path to the log file.
+
+    Returns:
+        tuple: A tuple containing a boolean and a PositionGlobal object or None.
+               The boolean is True if the home position was found, otherwise False.
+               The PositionGlobal object contains the latitude, longitude, and altitude
+               of the home position if found, otherwise None.
+    """
+    with open(path, "r", encoding="utf-8") as log_file:
+        for line in log_file:
+            home_position_line = re.findall(r"Home position received: .*", line)
+            if len(home_position_line) > 0:
+                home_position_parts = home_position_line[0].split()
+                return position_global.PositionGlobal.create(
+                    float(home_position_parts[6][:-1]),
+                    float(home_position_parts[8][:-1]),
+                    float(home_position_parts[10]),
+                )
+    return False, None
 
 
 # similar main to other logs to kml scripts
@@ -89,27 +120,24 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    pathlib.Path(args.output_dir).mkdir(exist_ok=True, parents=True)
-    geolocation_file_name = list(pathlib.Path(args.log_path).glob("geolocation_worker*"))[0]
-    with open(
-        list(pathlib.Path(args.log_path).glob("communications_worker*"))[0], "r", encoding="utf-8"
-    ) as f:
-        for line in f:
-            home_position_line = re.findall(r"Home position received: .*", line)
-            if len(home_position_line) > 0:
-                home_position_parts = home_position_line[0].split()
-                result, home_position = position_global.PositionGlobal.create(
-                    float(home_position_parts[6][:-1]),
-                    float(home_position_parts[8][:-1]),
-                    float(home_position_parts[10]),
-                )
-                break
-    if not home_position:
+    log_path = pathlib.Path(args.log_path)
+    document_prefix_name = args.document_prefix_name
+    output_dir = pathlib.Path(args.output_dir)
+
+    # Create the output directory if it doesn't exist already
+    output_dir.mkdir(exist_ok=True, parents=True)
+
+    communication_file_path = next(log_path.glob("communications_worker*"))
+    result, home_position = find_home_position(communication_file_path)
+
+    if not result:
         print("Cannot find home position")
     else:
+        geolocation_file_path = next(log_path.glob("geolocation_worker*"))
         result, path = convert_geolocation_log_to_kml(
-            geolocation_file_name, home_position, args.document_prefix_name, args.output_dir
+            geolocation_file_path, home_position, document_prefix_name, output_dir
         )
+
     if result:
         print("Done!")
     else:
