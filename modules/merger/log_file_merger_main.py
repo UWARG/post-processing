@@ -8,7 +8,9 @@ import pathlib
 from . import log_file_merger_helpers
 
 
-CONFIG_FILE_PATH = pathlib.Path(pathlib.Path(__file__).parent, "config_logger.yaml")
+CONFIG_FILE_PATH = pathlib.Path(
+    pathlib.Path(__file__).parent.parent, "common", "modules", "logger", "config_logger.yaml"
+)
 
 
 def main() -> int:

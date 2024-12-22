@@ -129,7 +129,8 @@ def read_log_files(
                         log_entries.append(line)
                     except ValueError:
                         # Group this line with last line with a timestamp
-                        log_entries[-1] += line
+                        if len(log_entries > 0):
+                            log_entries[-1] += line
         # Catching all exceptions for library call
         # pylint: disable-next=broad-exception-caught
         except Exception as exception:
