@@ -21,19 +21,17 @@ def convert_geolocation_log_to_kml(
     home_position: position_global.PositionGlobal,
     document_name_prefix: str,
     save_directory: pathlib.Path,
-) -> "tuple[bool, pathlib.Path | None]":
+) -> bool:
     """
-    Given a geolocation log file with a specific format, return a corresponding KML file.
+    Given a geolocation log file, generate a KML file.
 
     Args:
-        log_file (str): Path to the geolocation log file
+        log_file (pathlib.Path): Path to the geolocation log file
         document_name_prefix (str): Prefix name for saved KML file.
-        save_directory (str): Directory to save the KML file to.
+        save_directory (pathlib.Path): Directory to save the KML file to.
 
     Returns:
-        tuple[bool, pathlib.Path | None]: Returns (False, None) if function
-            failed to execute, otherwise (True, path) where path a pathlib.Path
-            object pointing to the KML file.
+        bool: True on success, False otherwise.
     """
     locations = []
 
@@ -51,7 +49,7 @@ def convert_geolocation_log_to_kml(
                 result, local_location = location_local.LocationLocal.create(north, east)
                 if not result:
                     print("Failed creating LocationLocal")
-                    return False, None
+                    return False
 
                 result, global_position = (
                     local_global_conversion.position_global_from_location_local(
@@ -60,18 +58,19 @@ def convert_geolocation_log_to_kml(
                 )
                 if not result:
                     print("Failed converting from LocationLocal to PositionGlobal")
-                    return False, None
+                    return False
 
                 result, global_location = location_global.LocationGlobal.create(
                     global_position.latitude, global_position.longitude
                 )
                 if not result:
                     print("Failed converting from PositionGlobal to LocationGlobal")
-                    return False, None
+                    return False
 
                 locations.append(global_location)
 
-        return kml_conversion.locations_to_kml(locations, document_name_prefix, save_directory)
+    result, path = kml_conversion.locations_to_kml(locations, document_name_prefix, save_directory)
+    return result
 
 
 def find_home_position(path: pathlib.Path) -> "tuple[bool, position_global.PositionGlobal | None]":
