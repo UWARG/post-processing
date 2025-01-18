@@ -16,9 +16,6 @@ from .common.modules.mavlink import local_global_conversion
 DEFAULT_RESULTS_PATH = pathlib.Path("results")
 
 
-# Disable detection of variable naming clash under if __name__ == "__main__",
-# since the two scopes don't conflict with each other.
-# pylint: disable=redefined-outer-name
 def convert_geolocation_log_to_kml(
     log_file: pathlib.Path,
     home_position: position_global.PositionGlobal,
@@ -120,25 +117,25 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    log_path = pathlib.Path(args.log_path)
-    document_prefix_name = args.document_prefix_name
+    log_file_path = pathlib.Path(args.log_path)
+    _document_name_prefix = args.document_prefix_name
     output_dir = pathlib.Path(args.output_dir)
 
     # Create the output directory if it doesn't exist already
     output_dir.mkdir(exist_ok=True, parents=True)
 
-    communication_file_path = next(log_path.glob("communications_worker*"))
-    result, home_position = find_home_position(communication_file_path)
+    communication_file_path = next(log_file_path.glob("communications_worker*"))
+    _result, _home_position = find_home_position(communication_file_path)
 
-    if not result:
+    if not _result:
         print("Cannot find home position")
     else:
-        geolocation_file_path = next(log_path.glob("geolocation_worker*"))
-        result, path = convert_geolocation_log_to_kml(
-            geolocation_file_path, home_position, document_prefix_name, output_dir
+        geolocation_file_path = next(log_file_path.glob("geolocation_worker*"))
+        _result, _path = convert_geolocation_log_to_kml(
+            geolocation_file_path, _home_position, _document_name_prefix, output_dir
         )
 
-    if result:
+    if _result:
         print("Done!")
     else:
         print("Failed to convert to KML")
