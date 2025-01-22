@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2">
+    <Document id="1">
+        <Placemark id="3">
+            <name>12:43:09 0</name>
+            <Point id="2">
+                <coordinates>-80.57689666748047,43.43374252319336,0.0</coordinates>
+            </Point>
+        </Placemark>
+        <Placemark id="5">
+            <name>12:45:20 0</name>
+            <Point id="4">
+                <coordinates>-80.57689239966193,43.4337297542847,0.0</coordinates>
+            </Point>
+        </Placemark>
+        <Placemark id="7">
+            <name>12:45:20 1</name>
+            <Point id="6">
+                <coordinates>-80.57688871734734,43.43370788673144,0.0</coordinates>
+            </Point>
+        </Placemark>
+        <Placemark id="9">
+            <name>12:45:23 0</name>
+            <Point id="8">
+                <coordinates>-80.57689227774054,43.4337224835112,0.0</coordinates>
+            </Point>
+        </Placemark>
+        <Placemark id="11">
+            <name>12:45:23 1</name>
+            <Point id="10">
+                <coordinates>-80.57687034830606,43.43379008515989,0.0</coordinates>
+            </Point>
+        </Placemark>
+        <Placemark id="13">
+            <name>12:45:23 2</name>
+            <Point id="12">
+                <coordinates>-80.57686864198071,43.43375248951066,0.0</coordinates>
+            </Point>
+        </Placemark>
+        <Placemark id="15">
+            <name>12:45:33 0</name>
+            <Point id="14">
+                <coordinates>-80.5768904349416,43.43372482217644,0.0</coordinates>
+            </Point>
+        </Placemark>
+        <Placemark id="17">
+            <name>12:45:33 1</name>
+            <Point id="16">
+                <coordinates>-80.57687428010651,43.43381710384659,0.0</coordinates>
+            </Point>
+        </Placemark>
+        <Placemark id="19">
+            <name>12:45:33 2</name>
+            <Point id="18">
+                <coordinates>-80.57697821904591,43.433861154053936,0.0</coordinates>
+            </Point>
+        </Placemark>
+        <Placemark id="21">
+            <name>12:45:41 0</name>
+            <Point id="20">
+                <coordinates>-80.5768904197598,43.43372485034973,0.0</coordinates>
+            </Point>
+        </Placemark>
+        <Placemark id="23">
+            <name>12:45:41 1</name>
+            <Point id="22">
+                <coordinates>-80.57688004366786,43.43383400837715,0.0</coordinates>
+            </Point>
+        </Placemark>
+        <Placemark id="25">
+            <name>12:45:41 2</name>
+            <Point id="24">
+                <coordinates>-80.57697770188884,43.43386116602711,0.0</coordinates>
+            </Point>
+        </Placemark>
+        <Placemark id="27">
+            <name>12:45:51 0</name>
+            <Point id="26">
+                <coordinates>-80.57689010212073,43.43372475172002,0.0</coordinates>
+            </Point>
+        </Placemark>
+        <Placemark id="29">
+            <name>12:45:51 1</name>
+            <Point id="28">
+                <coordinates>-80.57687962604024,43.43383389155201,0.0</coordinates>
+            </Point>
+        </Placemark>
+        <Placemark id="31">
+            <name>12:45:51 2</name>
+            <Point id="30">
+                <coordinates>-80.57697787429811,43.43386117810042,0.0</coordinates>
+            </Point>
+        </Placemark>
+        <Placemark id="33">
+            <name>12:45:54 0</name>
+            <Point id="32">
+                <coordinates>-80.57689053080625,43.43372450262348,0.0</coordinates>
+            </Point>
+        </Placemark>
+        <Placemark id="35">
+            <name>12:45:54 1</name>
+            <Point id="34">
+                <coordinates>-80.57687935076154,43.4338338165106,0.0</coordinates>
+            </Point>
+        </Placemark>
+        <Placemark id="37">
+            <name>12:45:54 2</name>
+            <Point id="36">
+                <coordinates>-80.57697800483585,43.433861185465936,0.0</coordinates>
+            </Point>
+        </Placemark>
+        <Placemark id="39">
+            <name>12:45:57 0</name>
+            <Point id="38">
+                <coordinates>-80.57689169515643,43.43372536162928,0.0</coordinates>
+            </Point>
+        </Placemark>
+        <Placemark id="41">
+            <name>12:45:57 1</name>
+            <Point id="40">
+                <coordinates>-80.57687919359404,43.433833780724854,0.0</coordinates>
+            </Point>
+        </Placemark>
+        <Placemark id="43">
+            <name>12:45:57 2</name>
+            <Point id="42">
+                <coordinates>-80.5769781469141,43.433861190745915,0.0</coordinates>
+            </Point>
+        </Placemark>
+        <Placemark id="45">
+            <name>12:46:00 0</name>
+            <Point id="44">
+                <coordinates>-80.57689171638917,43.43372522427281,0.0</coordinates>
+            </Point>
+        </Placemark>
+        <Placemark id="47">
+            <name>12:46:00 1</name>
+            <Point id="46">
+                <coordinates>-80.57687911391848,43.43383375965861,0.0</coordinates>
+            </Point>
+        </Placemark>
+        <Placemark id="49">
+            <name>12:46:00 2</name>
+            <Point id="48">
+                <coordinates>-80.57697823961333,43.43386119320961,0.0</coordinates>
+            </Point>
+        </Placemark>
+        <Placemark id="51">
+            <name>12:46:03 0</name>
+            <Point id="50">
+                <coordinates>-80.57689195946897,43.433725260818065,0.0</coordinates>
+            </Point>
+        </Placemark>
+        <Placemark id="53">
+            <name>12:46:03 1</name>
+            <Point id="52">
+                <coordinates>-80.57687904668305,43.4338337393877,0.0</coordinates>
+            </Point>
+        </Placemark>
+        <Placemark id="55">
+            <name>12:46:03 2</name>
+            <Point id="54">
+                <coordinates>-80.57697830079026,43.43386119450753,0.0</coordinates>
+            </Point>
+        </Placemark>
+    </Document>
+</kml>
