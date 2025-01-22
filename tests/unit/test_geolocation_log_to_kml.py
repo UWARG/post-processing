@@ -21,7 +21,7 @@ expected_output_dir = pathlib.Path(__file__).parent / "output_kmls"
 def output_dir() -> Generator[pathlib.Path, None, None]:
     """Output directory for generated KML files"""
     path = pathlib.Path(__file__).parent / "__temp__"
-    path.mkdir(exist_ok=True)
+    path.mkdir()
 
     yield path
 
