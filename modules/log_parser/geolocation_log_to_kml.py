@@ -116,21 +116,21 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    log_file_path = pathlib.Path(args.log_path)
+    log_dir = pathlib.Path(args.log_path)
     _document_name_prefix = args.document_prefix_name
     output_dir = pathlib.Path(args.output_dir)
 
     # Create the output directory if it doesn't exist already
     output_dir.mkdir(exist_ok=True, parents=True)
 
-    communication_file_path = next(log_file_path.glob("communications_worker*"))
+    communication_file_path = next(log_dir.glob("communications_worker_[0-9]*.log"))
     _result, _home_position = find_home_position(communication_file_path)
 
     if not _result:
         print("Cannot find home position")
     else:
-        geolocation_file_path = next(log_file_path.glob("geolocation_worker*"))
-        _result, _path = convert_geolocation_log_to_kml(
+        geolocation_file_path = next(log_dir.glob("geolocation_worker_[0-9]*.log"))
+        _result = convert_geolocation_log_to_kml(
             geolocation_file_path, _home_position, _document_name_prefix, output_dir
         )
 
