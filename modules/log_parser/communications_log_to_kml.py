@@ -9,6 +9,8 @@ import re
 from ..common.modules.kml import kml_conversion
 from ..common.modules import location_global
 
+DEFAULT_RESULTS_PATH = pathlib.Path("results")
+
 
 def _convert_communication_log_to_kml(
     log_file: str, document_name_prefix: str, save_directory: pathlib.Path
@@ -101,13 +103,27 @@ def convert_communication_log_to_kml(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--log-path", type=str, required=True, help="path to logs folder")
-
+    parser.add_argument(
+        "--document-prefix-name", type=str, default="", help="prefix name for saved KML file"
+    )
+    parser.add_argument(
+        "--output-dir",
+        "-o",
+        type=str,
+        default=str(DEFAULT_RESULTS_PATH),
+        help="directory to save KML file to",
+    )
     args = parser.parse_args()
 
-    conversion_result = convert_communication_log_to_kml(
-        args.log_path, "output", pathlib.Path.cwd()
-    )
-    if conversion_result:
+    log_dir = next(pathlib.Path(args.log_path).glob("communications_worker_[0-9]*.log"))
+    _document_name_prefix = args.document_prefix_name
+    output_dir = pathlib.Path(args.output_dir)
+
+    # Create the output directory if it doesn't exist already
+    output_dir.mkdir(exist_ok=True, parents=True)
+
+    _result = convert_communication_log_to_kml(log_dir, _document_name_prefix, output_dir)
+    if _result:
         print("Done!")
     else:
         print("Failed to convert to KML")
