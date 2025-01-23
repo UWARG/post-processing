@@ -31,25 +31,18 @@ def output_dir() -> Generator[pathlib.Path, None, None]:
 # pylint: disable=redefined-outer-name
 def test_convert_communication_log_to_kml(output_dir: pathlib.Path) -> None:
     """Test converting communication log to KML"""
-    log_file = input_dir / "communications_worker_2023.log"
-    document_name_prefix = log_file.stem
 
-    result = communications_log_to_kml.convert_communication_log_to_kml(
-        log_file, document_name_prefix, output_dir
-    )
-    assert result
+    for log_file in input_dir.rglob("communications_worker_[0-9]*.log"):
+        result = communications_log_to_kml.convert_communication_log_to_kml(
+            log_file, log_file.stem, output_dir
+        )
+        assert result
 
-    generated_kml_file = next(output_dir.glob(f"{document_name_prefix}_[0-9]*.kml"))
-    expected_kml_file = expected_output_dir / f"{document_name_prefix}.kml"
+        for base_name in (log_file.stem, log_file.stem + "_last_line"):
+            generated_kml_file = next(output_dir.glob(f"{base_name}_[0-9]*.kml"))
+            expected_kml_file = expected_output_dir / f"{base_name}.kml"
 
-    # Compare file contents of generated vs actual KML files
-    with open(generated_kml_file, "r", encoding="utf-8") as f:
-        with open(expected_kml_file, "r", encoding="utf-8") as g:
-            assert f.read().strip() == g.read().strip()
-
-    generated_kml_file = next(output_dir.glob(f"{document_name_prefix}_last_line_[0-9]*.kml"))
-    expected_kml_file = expected_output_dir / f"{document_name_prefix}_last_line.kml"
-
-    with open(generated_kml_file, "r", encoding="utf-8") as f:
-        with open(expected_kml_file, "r", encoding="utf-8") as g:
-            assert f.read().strip() == g.read().strip()
+            # Compare file contents of generated vs actual KML files
+            with open(generated_kml_file, "r", encoding="utf-8") as f:
+                with open(expected_kml_file, "r", encoding="utf-8") as g:
+                    assert f.read().strip() == g.read().strip()

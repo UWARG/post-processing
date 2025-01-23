@@ -33,23 +33,21 @@ def output_dir() -> Generator[pathlib.Path, None, None]:
 # pylint: disable=redefined-outer-name
 def test_convert_geolocation_log_to_kml(output_dir: pathlib.Path) -> None:
     """Test converting geolocation log to KML"""
-    log_file = input_dir / "geolocation_worker_2010.log"
     result, home_position = position_global.PositionGlobal.create(0, 0, 0)
-    document_name_prefix = log_file.stem
 
     assert result
 
-    geolocation_log_to_kml.convert_geolocation_log_to_kml(
-        log_file, home_position, document_name_prefix, output_dir
-    )
+    for log_file in input_dir.rglob("geolocation_worker_[0-9]*.log"):
+        geolocation_log_to_kml.convert_geolocation_log_to_kml(
+            log_file, home_position, log_file.stem, output_dir
+        )
+        generated_kml_file = next(output_dir.glob(f"{log_file.stem}*.kml"))
+        expected_kml_file = expected_output_dir / f"{log_file.stem}.kml"
 
-    generated_kml_file = next(output_dir.glob(f"{document_name_prefix}*.kml"))
-    expected_kml_file = expected_output_dir / f"{document_name_prefix}.kml"
-
-    # Compare file contents of generated vs actual KML files
-    with open(generated_kml_file, "r", encoding="utf-8") as f:
-        with open(expected_kml_file, "r", encoding="utf-8") as g:
-            assert f.read().strip() == g.read().strip()
+        # Compare file contents of generated vs actual KML files
+        with open(generated_kml_file, "r", encoding="utf-8") as f:
+            with open(expected_kml_file, "r", encoding="utf-8") as g:
+                assert f.read().strip() == g.read().strip()
 
 
 def test_find_home_position() -> None:
