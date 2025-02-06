@@ -6,8 +6,8 @@ import argparse
 import pathlib
 import re
 
-from ..common.modules.kml import kml_conversion
 from ..common.modules import location_global
+from ..common.modules.kml import kml_conversion
 
 DEFAULT_RESULTS_PATH = pathlib.Path("results")
 
@@ -70,7 +70,7 @@ def convert_communication_log_to_kml(
 ) -> bool:
     """
     Given a communications log file, create a KML of the entire file and a KML
-    for the last line.
+    for the last line (as the most updated clusters/model of world).
 
     Args:
         log_file_path (pathlib.Path): Path to the communications log file

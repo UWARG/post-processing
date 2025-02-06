@@ -35,20 +35,27 @@ def convert_geolocation_log_to_kml(
     """
     locations = []
 
+    # Add home location
+    result, location = location_global.NamedLocationGlobal.create(
+        "Home location", home_position.latitude, home_position.longitude
+    )
+    if not result:
+        print("Failed to create NamedLocationGlobal for home position.")
+        return False
+    locations.append(location)
+
     with open(log_file, "r", encoding="utf-8") as f:
         for line in f:
             # Use the timestamp (hh:mm:ss) as the name of the marker in the KML file
             time = line[:8]
 
-            # find all the points within the line (should be just 1)
-            points = re.findall(
-                r"centre: \[.*\]", line
-            )  # format: [ 'centre:', '[', '123.123', '123.123]' ]
+            # Find the point within the line
+            point = re.search(
+                r"centre: \[(.*)\]", line
+            )  # Format: "centre: [     123.123     123.123]"
 
-            if len(points) > 0:
-                point = points[0].split()
-                north = float(point[2])
-                east = float(point[3][:-1])
+            if point is not None:
+                north, east = map(float, point.group(1).split())
                 result, local_location = location_local.LocationLocal.create(north, east)
                 if not result:
                     print("Failed creating LocationLocal")
@@ -63,7 +70,7 @@ def convert_geolocation_log_to_kml(
                     print("Failed converting from LocationLocal to PositionGlobal")
                     return False
 
-                # must make this named
+                # Must make this named
                 result, global_location = location_global.NamedLocationGlobal.create(
                     f"{time}", global_position.latitude, global_position.longitude
                 )
