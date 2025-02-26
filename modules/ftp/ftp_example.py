@@ -11,13 +11,16 @@ from pymavlink import mavutil
 CONNECTION_ADDRESS = "tcp:127.0.0.1:14550"
 TIMEOUT = 5.0
 DELAY_TIME = 1.0
+FILE_PATH = b"/@ROMFS/locations.txt"
+CHUNK_SIZE = 239  # Max data size per chunk
+MAX_PAYLOAD_SIZE = 239  # Max payload size for FTP commands
 
 # file path to read from
 # 1. start up connection on mission planner
 # 2. mavlink and establish write tcp connection
 # 3. config menu -> MAVFtp -> simulation drone file paths
-FILE_PATH = b"/@ROMFS/locations.txt"
-SEQ_NUM = 0
+
+seq_num = 0
 
 
 class Opcode(Enum):
@@ -86,6 +89,11 @@ def send_ftp_command(
         offset (int): Offset in the file. | index 8-11.
         payload (bytes): Payload data. | index 12-251.
     """
+    if len(payload) > MAX_PAYLOAD_SIZE:
+        raise ValueError(
+            f"Payload size exceeds maximum size: {len(payload)} bytes. The max is {MAX_PAYLOAD_SIZE} bytes."
+        )
+
     ftp_payload = bytearray(251)  # ftp payload size
 
     # packing payload in file system
@@ -118,7 +126,7 @@ else:
 # open file for reading session
 send_ftp_command(
     vehicle,
-    seq_num=SEQ_NUM,
+    seq_num=seq_num,
     opcode=Opcode.OPEN_FILE_RO.value,
     req_opcode=Opcode.NONE.value,
     session=0,
@@ -126,7 +134,7 @@ send_ftp_command(
     size=len(FILE_PATH),
     payload=FILE_PATH,
 )
-SEQ_NUM += 1
+seq_num += 1
 response = vehicle.recv_match(type="FILE_TRANSFER_PROTOCOL", blocking=True, timeout=TIMEOUT)
 
 if response is None:
@@ -143,26 +151,25 @@ if response_payload[3] != Opcode.ACK_RESPONSE.value:  # Check for error - NAK Re
 print("FILE OPENED: ")
 
 # retrieve session id, file size, and sequence number from ACK response
-SESSION_ID = response_payload[2]
-DATA_OFFSET = struct.unpack("<I", response_payload[8:12])[0]
-FILE_SIZE = struct.unpack("<I", response_payload[12 : 12 + response_payload[4]])[0]
-CHUNK_SIZE = 239  # Max data size per chunk
-FILE_DATA = b""
-SEQ_NUM = struct.unpack("<H", response_payload[0:2])[0]
+session_id = response_payload[2]
+data_offset = struct.unpack("<I", response_payload[8:12])[0]
+file_size = struct.unpack("<I", response_payload[12 : 12 + response_payload[4]])[0]
+file_data = b""
+seq_num = struct.unpack("<H", response_payload[0:2])[0]
 
 # read file in chunks
-while DATA_OFFSET < FILE_SIZE:
+while data_offset < file_size:
     send_ftp_command(
         vehicle,
-        seq_num=SEQ_NUM,
+        seq_num=seq_num,
         opcode=Opcode.READ_FILE.value,
         req_opcode=Opcode.NONE.value,
-        session=SESSION_ID,
-        offset=DATA_OFFSET,
+        session=session_id,
+        offset=data_offset,
         size=CHUNK_SIZE,
         payload=b"",
     )
-    SEQ_NUM += 1
+    seq_num += 1
     response = vehicle.recv_match(type="FILE_TRANSFER_PROTOCOL", blocking=True, timeout=TIMEOUT)
 
     if response is None:
@@ -177,32 +184,19 @@ while DATA_OFFSET < FILE_SIZE:
         break
 
     chunk_data = response_payload[12 : 12 + response_payload[4]]
-    FILE_DATA += chunk_data
-    DATA_OFFSET += len(chunk_data)
+    file_data += chunk_data
+    data_offset += len(chunk_data)
 
-    print(chunk_data.decode("utf-8", errors="ignore"), end="")
-
-    # Send the next read command while waiting for the current response
-    if DATA_OFFSET < FILE_SIZE:
-        send_ftp_command(
-            vehicle,
-            seq_num=SEQ_NUM,
-            opcode=Opcode.READ_FILE.value,
-            req_opcode=Opcode.NONE.value,
-            session=SESSION_ID,
-            offset=DATA_OFFSET,
-            size=CHUNK_SIZE,
-            payload=b"",
-        )
-        SEQ_NUM += 1
+# print entire file data
+print(file_data.decode("utf-8", errors="ignore"), end="")
 
 # Terminate read session
 send_ftp_command(
     vehicle,
-    seq_num=SEQ_NUM,
+    seq_num=seq_num,
     opcode=Opcode.TERMINATE_SESSION.value,
     req_opcode=Opcode.NONE.value,
-    session=SESSION_ID,
+    session=session_id,
     offset=0,
     size=0,
     payload=b"",
