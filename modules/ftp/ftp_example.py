@@ -1,5 +1,6 @@
 """
 Groundside scripts to receive GPS location messages
+FTP Documentation: https://mavlink.io/en/services/ftp.html
 """
 
 import struct
@@ -67,14 +68,51 @@ class NakErrorCode(Enum):
     FILE_NOT_FOUND = 10  # File/Directory is not found
 
 
+class FTPPayload:
+    """
+    FTP Payload structure and converter to bytes
+    """
+
+    def __init__(
+        self,
+        seq_num: int,
+        session: int,
+        opcode: int,
+        size: int,
+        req_opcode: int,
+        offset: int,
+        payload: bytes,
+    ) -> None:
+        self.seq_num = seq_num
+        self.session = session
+        self.opcode = opcode
+        self.size = size
+        self.req_opcode = req_opcode
+        self.offset = offset
+        self.payload = payload
+
+    def to_bytes(self) -> bytearray:
+        ftp_payload = bytearray(251)
+        ftp_payload[0:2] = struct.pack("<H", seq_num)
+        ftp_payload[2] = self.session
+        ftp_payload[3] = self.opcode
+        ftp_payload[4] = self.size
+        ftp_payload[5] = self.req_opcode
+        ftp_payload[6] = 0  # burst_complete
+        ftp_payload[7] = 0  # padding
+        ftp_payload[8:12] = struct.pack("<I", self.offset)
+        ftp_payload[12 : 12 + len(self.payload)] = self.payload
+        return ftp_payload
+
+
 def send_ftp_command(
     connection: mavutil.mavlink_connection,
     seq_num: int,
-    opcode: int,
-    req_opcode: int,
     session: int,
-    offset: int,
+    opcode: int,
     size: int,
+    req_opcode: int,
+    offset: int,
     payload: bytes,
 ) -> None:
     """
@@ -82,6 +120,7 @@ def send_ftp_command(
 
     Args:
         connection (mavutil.mavlink_connection): MAVLink connection object.
+        seq_num (int): Sequence number. | index 0-1 | range 0-65535.
         session (int): Session ID. | index 2 | range 0-255.
         opcode (int): FTP command opcode | index 3 | range 0-255.
         size (int): Size of the payload. | index 4 | range 0-255.
@@ -89,23 +128,26 @@ def send_ftp_command(
         offset (int): Offset in the file. | index 8-11.
         payload (bytes): Payload data. | index 12-251.
     """
+
+    # Validate input parameters
+    if not (0 <= seq_num <= 65535):
+        raise ValueError("seq_num must be in range 0-65535")
+    if not (0 <= session <= 255):
+        raise ValueError("session must be in range 0-255")
+    if not isinstance(opcode, Opcode):
+        raise TypeError("opcode must be an instance of Opcode")
+    if not (0 <= size <= 255):
+        raise ValueError("size must be in range 0-255")
+    if not isinstance(req_opcode, Opcode):
+        raise TypeError("req_opcode must be an instance of Opcode")
+    if not (0 <= offset <= 0xFFFFFFFF):
+        raise ValueError("offset must be in range 0-4294967295 (32-bit unsigned int)")
+    if not isinstance(payload, bytes):
+        raise TypeError("payload must be of type bytes")
     if len(payload) > MAX_PAYLOAD_SIZE:
-        raise ValueError(
-            f"Payload size exceeds maximum size: {len(payload)} bytes. The max is {MAX_PAYLOAD_SIZE} bytes."
-        )
+        raise ValueError(f"Payload size exceeds {MAX_PAYLOAD_SIZE} bytes")
 
-    ftp_payload = bytearray(251)  # ftp payload size
-
-    # packing payload in file system
-    ftp_payload[0:2] = struct.pack("<H", seq_num)
-    ftp_payload[2] = session
-    ftp_payload[3] = opcode
-    ftp_payload[4] = size
-    ftp_payload[5] = req_opcode
-    ftp_payload[6] = 0  # burst_complete
-    ftp_payload[7] = 0  # padding
-    ftp_payload[8:12] = struct.pack("<I", offset)
-    ftp_payload[12 : 12 + len(payload)] = payload
+    ftp_payload = FTPPayload(seq_num, session, opcode, size, req_opcode, offset, payload).to_bytes()
 
     connection.mav.file_transfer_protocol_send(
         target_network=0,
