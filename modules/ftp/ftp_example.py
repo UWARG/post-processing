@@ -5,7 +5,8 @@ FTP Documentation: https://mavlink.io/en/services/ftp.html
 
 import struct
 import sys
-from enum import Enum
+from enum import Enum, IntEnum
+from typing import Tuple
 from pymavlink import mavutil
 
 # connection params
@@ -24,7 +25,7 @@ MAX_PAYLOAD_SIZE = 239  # Max payload size for FTP commands
 seq_num = 0
 
 
-class Opcode(Enum):
+class Opcode(IntEnum):
     """
     Opcodes for FTP commands
     """
@@ -50,7 +51,7 @@ class Opcode(Enum):
     NAK_RESPONSE = 129
 
 
-class NakErrorCode(Enum):
+class NakErrorCode(IntEnum):
     """
     Error codes for FTP commands
     """
@@ -68,21 +69,46 @@ class NakErrorCode(Enum):
     FILE_NOT_FOUND = 10  # File/Directory is not found
 
 
-class FTPPayload:
+class FTPMessage:
     """
     FTP Payload structure and converter to bytes
+        seq_num (int): Sequence number. | index 0-1 | range 0-65535.
+        session (int): Session ID. | index 2 | range 0-255.
+        opcode (Opcode): FTP command opcode | index 3 | range 0-255.
+        size (int): Size of the payload. | index 4 | range 0-255.
+        req_opcode (Opcode): Requested opcode. | index 5 | range 0-255.
+        offset (int): Offset in the file. | index 8-11.
+        payload (bytes): Payload data. | index 12-251.
     """
 
     def __init__(
         self,
         seq_num: int,
         session: int,
-        opcode: int,
+        opcode: Opcode,
         size: int,
-        req_opcode: int,
+        req_opcode: Opcode,
         offset: int,
         payload: bytes,
     ) -> None:
+        # Validate input parameters
+        if not (0 <= seq_num <= 65535):
+            raise ValueError("seq_num must be in range 0-65535")
+        if not (0 <= session <= 255):
+            raise ValueError("session must be in range 0-255")
+        if not isinstance(opcode, Opcode):
+            raise TypeError("opcode must be an instance of Opcode")
+        if not (0 <= size <= 255):
+            raise ValueError("size must be in range 0-255")
+        if not isinstance(req_opcode, Opcode):
+            raise TypeError("req_opcode must be an instance of Opcode")
+        if not (0 <= offset <= 0xFFFFFFFF):
+            raise ValueError("offset must be in range 0-4294967295 (32-bit unsigned int)")
+        if not isinstance(payload, bytes):
+            raise TypeError("payload must be of type bytes")
+        if len(payload) > MAX_PAYLOAD_SIZE:
+            raise ValueError(f"Payload size exceeds {MAX_PAYLOAD_SIZE} bytes")
+
         self.seq_num = seq_num
         self.session = session
         self.opcode = opcode
@@ -91,9 +117,24 @@ class FTPPayload:
         self.offset = offset
         self.payload = payload
 
+    @classmethod
+    def from_bytes(cls, response_payload: bytes) -> "FTPMessage":
+        """
+        Create FTPMessage instance from raw bytes
+        """
+        seq_num = struct.unpack("<H", response_payload[0:2])[0]
+        session = response_payload[2]
+        opcode = Opcode.READ_FILE
+        size = struct.unpack("<I", response_payload[12:16])[0]
+        req_opcode = Opcode.NONE
+        offset = 0
+        payload = struct.unpack("<I", response_payload[12 : 12 + response_payload[4]])[0]
+
+        return cls(seq_num, session, opcode, size, req_opcode, offset, payload)
+
     def to_bytes(self) -> bytearray:
         ftp_payload = bytearray(251)
-        ftp_payload[0:2] = struct.pack("<H", seq_num)
+        ftp_payload[0:2] = struct.pack("<H", self.seq_num)
         ftp_payload[2] = self.session
         ftp_payload[3] = self.opcode
         ftp_payload[4] = self.size
@@ -104,57 +145,34 @@ class FTPPayload:
         ftp_payload[12 : 12 + len(self.payload)] = self.payload
         return ftp_payload
 
+    def send_ftp_command(self, connection: mavutil.mavlink_connection) -> None:
+        """
+        Send an FTP command to the vehicle.
+        """
 
-def send_ftp_command(
-    connection: mavutil.mavlink_connection,
-    seq_num: int,
-    session: int,
-    opcode: int,
-    size: int,
-    req_opcode: int,
-    offset: int,
-    payload: bytes,
-) -> None:
+        payload = self.to_bytes()
+
+        connection.mav.file_transfer_protocol_send(
+            target_network=0,
+            target_system=connection.target_system,
+            target_component=connection.target_component,
+            payload=payload,
+        )
+
+
+def ftp_read_file(response_payload: bytes) -> Tuple[bool, FTPMessage]:
     """
-    Send an FTP command to the vehicle.
-
-    Args:
-        connection (mavutil.mavlink_connection): MAVLink connection object.
-        seq_num (int): Sequence number. | index 0-1 | range 0-65535.
-        session (int): Session ID. | index 2 | range 0-255.
-        opcode (int): FTP command opcode | index 3 | range 0-255.
-        size (int): Size of the payload. | index 4 | range 0-255.
-        req_opcode (int): Requested opcode. | index 5 | range 0-255.
-        offset (int): Offset in the file. | index 8-11.
-        payload (bytes): Payload data. | index 12-251.
+    Receive an FTP message from the vehicle for read command
     """
+    if response_payload[3] != Opcode.ACK_RESPONSE:  # Check for error - NAK Response
+        error_code = response_payload[12]
+        error_message = NakErrorCode(error_code).name
+        print("ERROR CODE: {error_code}, ERROR MESSAGE: {error_message}")
 
-    # Validate input parameters
-    if not (0 <= seq_num <= 65535):
-        raise ValueError("seq_num must be in range 0-65535")
-    if not (0 <= session <= 255):
-        raise ValueError("session must be in range 0-255")
-    if not isinstance(opcode, Opcode):
-        raise TypeError("opcode must be an instance of Opcode")
-    if not (0 <= size <= 255):
-        raise ValueError("size must be in range 0-255")
-    if not isinstance(req_opcode, Opcode):
-        raise TypeError("req_opcode must be an instance of Opcode")
-    if not (0 <= offset <= 0xFFFFFFFF):
-        raise ValueError("offset must be in range 0-4294967295 (32-bit unsigned int)")
-    if not isinstance(payload, bytes):
-        raise TypeError("payload must be of type bytes")
-    if len(payload) > MAX_PAYLOAD_SIZE:
-        raise ValueError(f"Payload size exceeds {MAX_PAYLOAD_SIZE} bytes")
+    print("FILE OPENED: ")
 
-    ftp_payload = FTPPayload(seq_num, session, opcode, size, req_opcode, offset, payload).to_bytes()
-
-    connection.mav.file_transfer_protocol_send(
-        target_network=0,
-        target_system=connection.target_system,
-        target_component=connection.target_component,
-        payload=ftp_payload,
-    )
+    return_payload = FTPMessage.from_bytes(response_payload)
+    return (True, return_payload)
 
 
 vehicle = mavutil.mavlink_connection(CONNECTION_ADDRESS, baud=57600)
@@ -165,83 +183,68 @@ if vehicle:
 else:
     print("DISCONNECTED...")
 
-# open file for reading session
-send_ftp_command(
-    vehicle,
+ftp_payload = FTPMessage(
     seq_num=seq_num,
-    opcode=Opcode.OPEN_FILE_RO.value,
-    req_opcode=Opcode.NONE.value,
     session=0,
-    offset=0,
+    opcode=Opcode.OPEN_FILE_RO,
     size=len(FILE_PATH),
+    req_opcode=Opcode.NONE,
+    offset=0,
     payload=FILE_PATH,
 )
-seq_num += 1
-response = vehicle.recv_match(type="FILE_TRANSFER_PROTOCOL", blocking=True, timeout=TIMEOUT)
+
+# open file for reading session
+ftp_payload.send_ftp_command(vehicle)
+
+response = vehicle.recv_match(
+    type="FILE_TRANSFER_PROTOCOL", blocking=True, timeout=TIMEOUT
+)  # Wait for ACK response
+seq_num += 1  # If drone receives a message with the same seq_num then it assumes ACK/NAK response was lost and resends the message
 
 if response is None:
     print("NO RESPONSE RECEIVED")
-    # sys.exit()
 
-response_payload = bytes(response.payload)
-if response_payload[3] != Opcode.ACK_RESPONSE.value:  # Check for error - NAK Response
-    error_code = response_payload[12]
-    error_message = NakErrorCode(error_code).name
-    print("ERROR CODE:", {error_code}, "ERROR MESSAGE:", {error_message})
-    sys.exit()
-
-print("FILE OPENED: ")
-
-# retrieve session id, file size, and sequence number from ACK response
-session_id = response_payload[2]
-data_offset = struct.unpack("<I", response_payload[8:12])[0]
-file_size = struct.unpack("<I", response_payload[12 : 12 + response_payload[4]])[0]
+[read_done, response_payload] = ftp_read_file(bytes(response.payload))
 file_data = b""
-seq_num = struct.unpack("<H", response_payload[0:2])[0]
 
 # read file in chunks
-while data_offset < file_size:
-    send_ftp_command(
-        vehicle,
+while response_payload.offset < response_payload.file_size:
+    ftp_payload = FTPMessage(
         seq_num=seq_num,
-        opcode=Opcode.READ_FILE.value,
-        req_opcode=Opcode.NONE.value,
-        session=session_id,
-        offset=data_offset,
+        session=response_payload.session,
+        opcode=Opcode.READ_FILE,
         size=CHUNK_SIZE,
+        req_opcode=Opcode.NONE,
+        offset=response_payload.offset,
         payload=b"",
     )
-    seq_num += 1
+    ftp_payload.send_ftp_command(vehicle)
     response = vehicle.recv_match(type="FILE_TRANSFER_PROTOCOL", blocking=True, timeout=TIMEOUT)
 
     if response is None:
         print("ERROR: NO RESPONSE RECEIVED")
         break
 
-    response_payload = bytes(response.payload)
-    if response_payload[3] != Opcode.ACK_RESPONSE.value:
-        error_code = response_payload[12]
-        error_message = NakErrorCode(error_code).name
-        print("ERROR CODE:", {error_code}, "ERROR MESSAGE:", {error_message})
-        break
+    [chunk_read, chunk_response_payload] = ftp_read_file(bytes(response.payload))
 
-    chunk_data = response_payload[12 : 12 + response_payload[4]]
+    chunk_data = chunk_response_payload.payload[12 : 12 + chunk_response_payload.payload[4]]
     file_data += chunk_data
-    data_offset += len(chunk_data)
+    response_payload.offset += len(chunk_data)
 
 # print entire file data
 print(file_data.decode("utf-8", errors="ignore"), end="")
 
 # Terminate read session
-send_ftp_command(
-    vehicle,
-    seq_num=seq_num,
-    opcode=Opcode.TERMINATE_SESSION.value,
-    req_opcode=Opcode.NONE.value,
-    session=session_id,
-    offset=0,
+seq_num += 1
+ftp_payload = FTPMessage(
+    seq_num=response_payload.seq_num,
+    session=response_payload.session,
+    opcode=Opcode.TERMINATE_SESSION,
     size=0,
+    req_opcode=Opcode.NONE,
+    offset=0,
     payload=b"",
 )
 
+ftp_payload.send_ftp_command(vehicle)
 print("\nEND OF FILE")
