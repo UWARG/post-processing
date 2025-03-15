@@ -3,10 +3,11 @@ Groundside scripts to receive GPS location messages
 FTP Documentation: https://mavlink.io/en/services/ftp.html
 """
 
+import enum
 import struct
 import sys
-from enum import Enum, IntEnum
-from typing import Tuple
+
+
 from pymavlink import mavutil
 
 # connection params
@@ -25,7 +26,7 @@ MAX_PAYLOAD_SIZE = 239  # Max payload size for FTP commands
 seq_num = 0
 
 
-class Opcode(IntEnum):
+class Opcode(enum.IntEnum):
     """
     Opcodes for FTP commands
     """
@@ -51,7 +52,7 @@ class Opcode(IntEnum):
     NAK_RESPONSE = 129
 
 
-class NakErrorCode(IntEnum):
+class NakErrorCode(enum.IntEnum):
     """
     Error codes for FTP commands
     """
@@ -128,7 +129,7 @@ class FTPMessage:
         size = response_payload[4]
         req_opcode = Opcode(response_payload[5])
         offset = struct.unpack("<I", response_payload[8:12])[0]
-        data = struct.unpack("<I", response_payload[12 : 12 + size])[0]
+        data = response_payload[12 : 12 + size]
 
         return cls(seq_num, session, opcode, size, req_opcode, offset, data)
 
@@ -184,9 +185,8 @@ def receive_ftp_message(seq_num: int, timeout: float) -> Tuple[bool, FTPMessage]
         print("ERROR CODE: {error}, ERROR MESSAGE: {error.name}")
 
         if error == NakErrorCode.FAIL_ERRNO:
-            err_num = return_payload.payload[
-                1
-            ]  # Err number sent back in PayloadHeader.data[1] for FAIL_ERRNO
+            # Err number sent back in PayloadHeader.data[1] for FAIL_ERRNO
+            err_num = return_payload.payload[1]
             print(f"ERROR: Command failed with file-system error number {err_num}")
         return False, return_payload
     return True, return_payload
@@ -219,9 +219,8 @@ if not read_done:
     # No response received
     sys.exit()
 
-seq_num = (
-    response_payload.seq_num + 1
-)  # If drone receives a message with the same seq_num then it assumes ACK/NAK response was lost and resends the message
+# If drone receives a message with the same seq_num then it assumes ACK/NAK response was lost and resends the message
+seq_num = response_payload.seq_num + 1 
 
 # placeholder for file data in chunks
 file_data = b""
@@ -229,8 +228,9 @@ offset = 0
 file_size = struct.unpack("<I", response_payload.data)[0]
 
 if read_done and response_payload.size == 4:
-    # read file in chunks
-    while response_payload.offset < response_payload.size:
+    chunk_read_done = True
+    # read file in chunks until NAK response with EOF is received
+    while chunk_read_done:
         ftp_payload = FTPMessage(
             seq_num=seq_num,
             session=response_payload.session,
@@ -243,9 +243,6 @@ if read_done and response_payload.size == 4:
         ftp_payload.send_ftp_command(vehicle)
 
         chunk_read_done, chunk_response_payload = receive_ftp_message(seq_num, TIMEOUT)
-
-        if not chunk_read_done:
-            break
 
         seq_num = chunk_response_payload.seq_num + 1
         chunk_data = chunk_response_payload.data
