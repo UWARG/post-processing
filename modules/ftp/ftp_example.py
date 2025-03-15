@@ -89,7 +89,7 @@ class FTPMessage:
         size: int,
         req_opcode: Opcode,
         offset: int,
-        payload: bytes,
+        data: bytes,
     ) -> None:
         # Validate input parameters
         if not (0 <= seq_num <= 65535):
@@ -104,9 +104,9 @@ class FTPMessage:
             raise TypeError("req_opcode must be an instance of Opcode")
         if not (0 <= offset <= 0xFFFFFFFF):
             raise ValueError("offset must be in range 0-4294967295 (32-bit unsigned int)")
-        if not isinstance(payload, bytes):
+        if not isinstance(data, bytes):
             raise TypeError("payload must be of type bytes")
-        if len(payload) > MAX_PAYLOAD_SIZE:
+        if len(data) > MAX_PAYLOAD_SIZE:
             raise ValueError(f"Payload size exceeds {MAX_PAYLOAD_SIZE} bytes")
 
         self.seq_num = seq_num
@@ -115,7 +115,7 @@ class FTPMessage:
         self.size = size
         self.req_opcode = req_opcode
         self.offset = offset
-        self.payload = payload
+        self.data = data
 
     @classmethod
     def from_bytes(cls, response_payload: bytes) -> "FTPMessage":
@@ -124,13 +124,13 @@ class FTPMessage:
         """
         seq_num = struct.unpack("<H", response_payload[0:2])[0]
         session = response_payload[2]
-        opcode = Opcode.READ_FILE
-        size = struct.unpack("<I", response_payload[12:16])[0]
-        req_opcode = Opcode.NONE
-        offset = 0
-        payload = struct.unpack("<I", response_payload[12 : 12 + response_payload[4]])[0]
+        opcode = Opcode(response_payload[3])
+        size = struct.unpack("<I", response_payload[4])[0]
+        req_opcode = Opcode(response_payload[5])
+        offset = struct.unpack("<I", response_payload[8:12])[0]
+        data = struct.unpack("<I", response_payload[12 : 12 + size])[0]
 
-        return cls(seq_num, session, opcode, size, req_opcode, offset, payload)
+        return cls(seq_num, session, opcode, size, req_opcode, offset, data)
 
     def to_bytes(self) -> bytearray:
         ftp_payload = bytearray(251)
@@ -142,7 +142,7 @@ class FTPMessage:
         ftp_payload[6] = 0  # burst_complete
         ftp_payload[7] = 0  # padding
         ftp_payload[8:12] = struct.pack("<I", self.offset)
-        ftp_payload[12 : 12 + len(self.payload)] = self.payload
+        ftp_payload[12 : 12 + len(self.data)] = self.data
         return ftp_payload
 
     def send_ftp_command(self, connection: mavutil.mavlink_connection) -> None:
@@ -160,19 +160,28 @@ class FTPMessage:
         )
 
 
-def ftp_read_file(response_payload: bytes) -> Tuple[bool, FTPMessage]:
+def receive_ftp_message(response_payload: bytes, received_seq_num: int) -> Tuple[bool, FTPMessage]:
     """
     Receive an FTP message from the vehicle for read command
     """
-    if response_payload[3] != Opcode.ACK_RESPONSE:  # Check for error - NAK Response
-        error_code = response_payload[12]
+    return_payload = FTPMessage.from_bytes(response_payload)
+
+    if return_payload.seq_num != received_seq_num:
+        print("ERROR: Sequence number mismatch")
+        return False, return_payload
+
+    if return_payload.opcode != Opcode.ACK_RESPONSE:  # Check for error - NAK Response
+        error_code = return_payload.payload[0]
         error_message = NakErrorCode(error_code).name
         print("ERROR CODE: {error_code}, ERROR MESSAGE: {error_message}")
 
-    print("FILE OPENED: ")
-
-    return_payload = FTPMessage.from_bytes(response_payload)
-    return (True, return_payload)
+        if error_code == 2:
+            err_num = return_payload.payload[
+                1
+            ]  # Err number sent back in PayloadHeader.data[1] for FAIL_ERRNO
+            print(f"ERROR: Command failed with file-system error number {err_num}")
+        return False, return_payload
+    return True, return_payload
 
 
 vehicle = mavutil.mavlink_connection(CONNECTION_ADDRESS, baud=57600)
@@ -190,7 +199,7 @@ ftp_payload = FTPMessage(
     size=len(FILE_PATH),
     req_opcode=Opcode.NONE,
     offset=0,
-    payload=FILE_PATH,
+    data=FILE_PATH,
 )
 
 # open file for reading session
@@ -199,37 +208,45 @@ ftp_payload.send_ftp_command(vehicle)
 response = vehicle.recv_match(
     type="FILE_TRANSFER_PROTOCOL", blocking=True, timeout=TIMEOUT
 )  # Wait for ACK response
-seq_num += 1  # If drone receives a message with the same seq_num then it assumes ACK/NAK response was lost and resends the message
 
 if response is None:
     print("NO RESPONSE RECEIVED")
 
-[read_done, response_payload] = ftp_read_file(bytes(response.payload))
+read_done, response_payload = receive_ftp_message(bytes(response.payload), seq_num + 1)
+seq_num += 1  # If drone receives a message with the same seq_num then it assumes ACK/NAK response was lost and resends the message
+
+# placeholder for file data in chunks
 file_data = b""
+offset = 0
+file_size = struct.unpack("<I", response_payload.data)[0]
 
-# read file in chunks
-while response_payload.offset < response_payload.file_size:
-    ftp_payload = FTPMessage(
-        seq_num=seq_num,
-        session=response_payload.session,
-        opcode=Opcode.READ_FILE,
-        size=CHUNK_SIZE,
-        req_opcode=Opcode.NONE,
-        offset=response_payload.offset,
-        payload=b"",
-    )
-    ftp_payload.send_ftp_command(vehicle)
-    response = vehicle.recv_match(type="FILE_TRANSFER_PROTOCOL", blocking=True, timeout=TIMEOUT)
+if read_done and response_payload.size == 4:
+    # read file in chunks
+    while response_payload.offset < response_payload.size:
+        ftp_payload = FTPMessage(
+            seq_num=seq_num,
+            session=response_payload.session,
+            opcode=Opcode.READ_FILE,
+            size=CHUNK_SIZE,
+            req_opcode=Opcode.NONE,
+            offset=offset,
+            data=b"",
+        )
+        ftp_payload.send_ftp_command(vehicle)
+        response = vehicle.recv_match(type="FILE_TRANSFER_PROTOCOL", blocking=True, timeout=TIMEOUT)
 
-    if response is None:
-        print("ERROR: NO RESPONSE RECEIVED")
-        break
+        if response is None:
+            print("ERROR: NO RESPONSE RECEIVED")
+            break
 
-    [chunk_read, chunk_response_payload] = ftp_read_file(bytes(response.payload))
+        chunk_read, chunk_response_payload = receive_ftp_message(
+            bytes(response.payload), seq_num + 1
+        )
 
-    chunk_data = chunk_response_payload.payload[12 : 12 + chunk_response_payload.payload[4]]
-    file_data += chunk_data
-    response_payload.offset += len(chunk_data)
+        chunk_data = chunk_response_payload.data
+        file_data += chunk_data
+        offset += len(chunk_data)
+        seq_num += 1
 
 # print entire file data
 print(file_data.decode("utf-8", errors="ignore"), end="")
