@@ -220,7 +220,7 @@ if not read_done:
     sys.exit()
 
 # If drone receives a message with the same seq_num then it assumes ACK/NAK response was lost and resends the message
-seq_num = response_payload.seq_num + 1 
+seq_num = response_payload.seq_num + 1
 
 # placeholder for file data in chunks
 file_data = b""
