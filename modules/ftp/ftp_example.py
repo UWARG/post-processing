@@ -7,7 +7,6 @@ import enum
 import struct
 import sys
 
-
 from pymavlink import mavutil
 
 # connection params
@@ -161,7 +160,7 @@ class FTPMessage:
         )
 
 
-def receive_ftp_message(seq_num: int, timeout: float) -> Tuple[bool, FTPMessage]:
+def receive_ftp_message(seq_num: int, timeout: float) -> tuple[bool, FTPMessage]:
     """
     Receive an FTP message from the vehicle for read command
     """
@@ -174,7 +173,7 @@ def receive_ftp_message(seq_num: int, timeout: float) -> Tuple[bool, FTPMessage]
         print("ERROR: NO RESPONSE RECEIVED")
         return False, None
 
-    return_payload = FTPMessage.from_bytes(response_payload)
+    return_payload = FTPMessage.from_bytes(bytes(response_payload.payload))
 
     if return_payload.seq_num != seq_num + 1:
         print("ERROR: Sequence number mismatch")
@@ -217,6 +216,7 @@ read_done, response_payload = receive_ftp_message(seq_num, TIMEOUT)
 
 if not read_done:
     # No response received
+    print("TIMEOUT: NO RESPONSE RECEIVED")
     sys.exit()
 
 # If drone receives a message with the same seq_num then it assumes ACK/NAK response was lost and resends the message
@@ -244,10 +244,11 @@ if read_done and response_payload.size == 4:
 
         chunk_read_done, chunk_response_payload = receive_ftp_message(seq_num, TIMEOUT)
 
-        seq_num = chunk_response_payload.seq_num + 1
-        chunk_data = chunk_response_payload.data
-        file_data += chunk_data
-        offset += len(chunk_data)
+        if chunk_read_done:
+            seq_num = chunk_response_payload.seq_num + 1
+            chunk_data = chunk_response_payload.data
+            file_data += chunk_data
+            offset += len(chunk_data)
 
 # print entire file data
 print(file_data.decode("utf-8", errors="ignore"), end="")
@@ -260,7 +261,7 @@ ftp_payload = FTPMessage(
     size=0,
     req_opcode=Opcode.NONE,
     offset=0,
-    payload=b"",
+    data=b"",
 )
 
 ftp_payload.send_ftp_command(vehicle)
