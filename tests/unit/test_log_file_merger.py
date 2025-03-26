@@ -28,13 +28,28 @@ LOG_ENRIES_3 = [
     "13:00:12: [ERROR] [foo3.py | foo3 | 30] Foo3 could not be created\n",
     "13:00:30: [ERROR] [foo3.py | foo3 | 49] Foo3 failed to create class object\n",
 ]
+LOG_ENTRIES_4 = [
+    "18:47:41: [INFO] Logger initialized\n",
+    "18:47:45: [INFO] Count: 0. Target detection took 0.007 seconds. Objects detected:\n"
+    "[cls: 1, conf: 1.0, bounds: 442.67 378.72 454.07 390.13].\n",
+    "18:47:50: [INFO] Another log entry.\n",
+]
 INVALID_LOG_ENTRIES = [
     "",
     "\n",
     "[INFO] [foo1.py | foo1 | 43] Foo1 initialized\n",
     "invalid line\n",
 ]
-UNSORTED_LOG_ENTRIES = LOG_ENRIES_1 + LOG_ENRIES_2 + LOG_ENRIES_3
+UNSORTED_LOG_ENTRIES = (
+    LOG_ENRIES_1
+    + LOG_ENRIES_2
+    + LOG_ENRIES_3
+    + [
+        "18:47:41: [INFO] Logger initialized\n",
+        "18:47:45: [INFO] Count: 0. Target detection took 0.007 seconds. Objects detected: [cls: 1, conf: 1.0, bounds: 442.67 378.72 454.07 390.13].\n",
+        "18:47:50: [INFO] Another log entry.\n",
+    ]
+)
 SORTED_LOG_ENTRIES = sorted(UNSORTED_LOG_ENTRIES)
 
 
@@ -76,6 +91,7 @@ def dummy_logs(tmp_path: pathlib.Path) -> pathlib.Path:  # type: ignore
     log_file_2 = pathlib.Path(tmp_path, f"log2{LOG_FILE_SUFFIX}")
     log_file_3 = pathlib.Path(tmp_path, f"log3{LOG_FILE_SUFFIX}")
     log_file_4 = pathlib.Path(tmp_path, f"log4{LOG_FILE_SUFFIX}")
+    log_file_5 = pathlib.Path(tmp_path, f"log5{LOG_FILE_SUFFIX}")
 
     log_file_1.write_text(
         "".join(LOG_ENRIES_1),
@@ -90,6 +106,10 @@ def dummy_logs(tmp_path: pathlib.Path) -> pathlib.Path:  # type: ignore
         encoding="utf-8",
     )
     log_file_4.write_text(
+        "".join(LOG_ENTRIES_4),
+        encoding="utf-8",
+    )
+    log_file_5.write_text(
         "".join(INVALID_LOG_ENTRIES),
         encoding="utf-8",
     )
@@ -99,6 +119,7 @@ def dummy_logs(tmp_path: pathlib.Path) -> pathlib.Path:  # type: ignore
     assert log_file_2.stat().st_size > 0, f"ERROR: Failed to write to {log_file_2}"
     assert log_file_3.stat().st_size > 0, f"ERROR: Failed to write to {log_file_3}"
     assert log_file_4.stat().st_size > 0, f"ERROR: Failed to write to {log_file_4}"
+    assert log_file_5.stat().st_size > 0, f"ERROR: Failed to write to {log_file_5}"
 
     yield tmp_path
 
