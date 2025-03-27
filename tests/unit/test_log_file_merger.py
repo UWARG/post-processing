@@ -32,7 +32,8 @@ LOG_ENTRIES_4 = [
     "18:47:41: [INFO] Logger initialized\n",
     "18:47:45: [INFO] Count: 0. Target detection took 0.007 seconds. Objects detected:\n"
     "[cls: 1, conf: 1.0, bounds: 442.67 378.72 454.07 390.13].\n",
-    "18:47:50: [INFO] Another log entry.\n",
+    "18:47:50: [INFO] <class 'modulepath'>, time: 1231231123.1\n",
+    "<class 'modulepath'>: Position: <class 'modulepath'>: north: 0, east: 0, down: 0\n",
 ]
 INVALID_LOG_ENTRIES = [
     "",
@@ -47,7 +48,7 @@ UNSORTED_LOG_ENTRIES = (
     + [
         "18:47:41: [INFO] Logger initialized\n",
         "18:47:45: [INFO] Count: 0. Target detection took 0.007 seconds. Objects detected: [cls: 1, conf: 1.0, bounds: 442.67 378.72 454.07 390.13].\n",
-        "18:47:50: [INFO] Another log entry.\n",
+        "18:47:50: [INFO] <class 'modulepath'>, time: 1231231123.1 <class 'modulepath'>: Position: <class 'modulepath'>: north: 0, east: 0, down: 0\n",
     ]
 )
 SORTED_LOG_ENTRIES = sorted(UNSORTED_LOG_ENTRIES)

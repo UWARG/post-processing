@@ -129,10 +129,10 @@ def read_log_files(
                         log_entries.append(line if line.endswith("\n") else line + "\n")
                     except ValueError:
                         # Merge this line with the last line if it is a continuation
-                        if (
-                            log_entries
-                            and line.strip().startswith("[")
+                        if log_entries and (
+                            line.strip().startswith("[")
                             and line.strip().endswith("].")
+                            or line.strip().startswith("<")
                         ):
                             log_entries[-1] = log_entries[-1].strip() + " " + line.strip() + "\n"
                         else:
