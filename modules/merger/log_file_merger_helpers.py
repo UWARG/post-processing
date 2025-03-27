@@ -126,11 +126,17 @@ def read_log_files(
                     try:
                         # Attempt to parse the timestamp to ensure it matches the format
                         datetime.datetime.strptime(line.split(": ")[0], log_datetime_format)
-                        log_entries.append(line)
+                        log_entries.append(line if line.endswith("\n") else line + "\n")
                     except ValueError:
-                        # Group this line with last line with a timestamp
-                        if len(log_entries > 0):
-                            log_entries[-1] += line
+                        # Merge this line with the last line if it is a continuation
+                        if log_entries and (
+                            line.strip().startswith("[")
+                            and line.strip().endswith("].")
+                            or line.strip().startswith("<")
+                        ):
+                            log_entries[-1] = log_entries[-1].strip() + " " + line.strip() + "\n"
+                        else:
+                            print(f"Skipping malformed log line: {line.strip()}")
         # Catching all exceptions for library call
         # pylint: disable-next=broad-exception-caught
         except Exception as exception:
